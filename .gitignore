@@ -1,5 +1,6 @@
 data/train/*
 data/test/*
+data/sample/*
 data/*.zip*
 data/*.csv
 models/*
