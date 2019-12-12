@@ -13,5 +13,5 @@ class TBoard():
         for key, value in metrics.items():
             self.writer.add_scalar(key, value, epoch)
 
-    def add_image(self, img, step):
-        self.writer.add_image('generated images', img, ste)
+    def add_image(self, name, img, step):
+        self.writer.add_image(name, img, step)

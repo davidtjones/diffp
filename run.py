@@ -15,7 +15,7 @@ parser.add_argument("results_dir", type=str, help="where to store results")
 args = parser.parse_args()
 
 # config needs to take arguments from parser
-config = Config(5, 128, .0002, )
+config = Config(20, 128, .00004, 0.0001)
 print("%s: Starting up" % config.name)
 print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
 
