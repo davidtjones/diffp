@@ -16,16 +16,16 @@ class DiabeticRetinopathyDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.dr_frame.iloc[idx]
-        image = sample['image']
-        label = sample['label']
+        image = sample['image']+".jpeg"
+        label = torch.tensor(sample['level'])
 
-        if transform_input:
-            transform_input(image)
+        if self.transform_input:
+            image = self.transform_input(image)
 
-        if transform_label:
-            transform_label(label)
+        if self.transform_label:
+            label = self.transform_label(label)
         
-        return {"image": sample['image'], "label": sample['level']}
+        return {"image": image, "label": label}
 
 
 if __name__ == '__main__':
