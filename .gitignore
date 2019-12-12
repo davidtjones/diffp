@@ -4,3 +4,4 @@ data/sample/*
 data/*.zip*
 data/*.csv
 models/*
+*__pycache__*
