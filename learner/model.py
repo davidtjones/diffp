@@ -1,7 +1,3 @@
-# Glow: Generative Flow with Invertible 1x1 Convs
-# https://papers.nips.cc/paper/8224-glow-generative-flow-with-invertible-1x1-convolutions.pdf
-# Droput as a Bayesian
-# https://arxiv.org/pdf/1506.02142.pdf
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -17,7 +13,16 @@ def weights_init(m):
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
 
+class Debug(nn.Module):
+    def forward(self, x):
+        print(x.shape)
+
+
+    
 class Generator(nn.Module):
     def __init__(self, ngpu, nc, nz, ngf):
         """
@@ -72,34 +77,40 @@ class Discriminator(nn.Module):
           ndf: size of feature maps in discriminator
         """
         self.ngpu = ngpu
+        self.nc = nc
+        self.ndf = ndf
         super(Discriminator, self).__init__()
         self.ngpu = ngpu
-        self.main = nn.Sequential(
-            # maybe try removing batch normalizations
-            # input is (nc) x 64 x 64j
-            spectral_norm(nn.Conv2d(nc, ndf, 4, 2, 1, bias=False)),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf) x 32 x 32
-            spectral_norm(nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False)),
-            #nn.BatchNorm2d(ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*2) x 16 x 16
-            spectral_norm(nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False)),
-            #nn.BatchNorm2d(ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*4) x 8 x 8
-            spectral_norm(nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False)),
-            #nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*8) x 4 x 4
-            spectral_norm(nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False)),
-            nn.Sigmoid()
-        )
 
-    def forward(self, input):
-        if input.is_cuda and self.ngpu > 1:
-            output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
-        else:
-            output = self.main(input)
+        self.debug = Debug()
+        self.conv1 = spectral_norm(nn.Conv2d(self.nc, self.ndf, 3, stride=1, padding=1))
+        self.conv2 = spectral_norm(nn.Conv2d(self.ndf, self.ndf, 4, stride=2, padding=1))
+        self.conv3 = spectral_norm(nn.Conv2d(self.ndf, self.ndf*2, 3, stride=1, padding=1))
+        self.conv4 = spectral_norm(nn.Conv2d(self.ndf*2, self.ndf*2, 4, stride=2, padding=1))
+        self.conv5 = spectral_norm(nn.Conv2d(self.ndf*2, self.ndf*4, 3, stride=1, padding=1))
+        self.conv6 = spectral_norm(nn.Conv2d(self.ndf*4, self.ndf*4, 4, stride=2, padding=1))
+        self.conv7 = spectral_norm(nn.Conv2d(self.ndf*4, self.ndf*8, 3, stride=1, padding=1))
 
-        return output.view(-1, 1).squeeze(1)
+        self.fc = spectral_norm(nn.Linear(8*8*512, 1))
+
+    def forward(self, x):
+        l = 0.1
+        m = x
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv1(m))
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv2(m))
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv3(m))
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv4(m))
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv5(m))
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv6(m))
+        # self.debug(m)
+        m = nn.LeakyReLU(l)(self.conv7(m))
+        # self.debug(m)
+
+        return self.fc(m.view(-1,8*8*512))
+        

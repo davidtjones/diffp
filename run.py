@@ -26,7 +26,7 @@ input_transform = Compose([
     Resize(image_size),
     CenterCrop(image_size),
     ToTensor(),
-    Norm()
+    Normalize([.5,.5,.5],[.5,.5,.5])
     ])
 
 

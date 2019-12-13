@@ -52,28 +52,23 @@ def train(dataset, config, test_dataset=None,
 
     real_label = .9
     fake_label = .1
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     iterations = 0
     start = time.time()
-    best_loss = 1000.0
 
     losses = {}
-    
     
     for epoch in range(config.epochs):
         epoch_time = time.time()
         print('\nEpoch {}/{}'.format(epoch+1, config.epochs))
         print('-' * 10)
 
-        # Each epoch has a training and validation phase
-
         running_loss_D = 0.0
         running_loss_G = 0.0
 
         # Iterate over data
         for batch_idx, batch in enumerate(dataloader):
-            # print(batch_idx)
             train_time = time.time()
             netD.zero_grad()
             
@@ -85,23 +80,18 @@ def train(dataset, config, test_dataset=None,
                 tb.add_image('sample images', vutils.make_grid(images, padding=2, normalize=True), epoch)
 
             b_size = images.size(0)
-            # labels = batch['label'].to(config.device)
             # labels for GAN are 1 for a real image and 0 for a fake image
-            # label = torch.full((b_size,), real_label, device=config.device)
-            # Label smoothing: 
             label = torch.full((b_size,), real_label, device=config.device)
 
-            
             ## Update D Network
             # Train with all real batch         
             output = netD(images).view(-1)
-            # noisy labels: (flip occassionally)
+
             errD_real = criterion(output, label)
             errD_real.backward()
             D_x = output.mean().item()
             
             ## Train with all fake batch
-
             noise = torch.randn(b_size, config.nz, 1, 1, device=config.device)
             fake = netG(noise)
             label = label.fill_(fake_label)
@@ -117,6 +107,7 @@ def train(dataset, config, test_dataset=None,
             netG.zero_grad()
             label.fill_(real_label)
             output = netD(fake).view(-1)
+
             errG = criterion(output, label)
             errG.backward()
             D_G_z2 = output.mean().item()
@@ -125,13 +116,13 @@ def train(dataset, config, test_dataset=None,
             
             # Output training stats
             if batch_idx % 50 == 0:
-                print(f'[{epoch}/{config.epochs}][{batch_idx}/{len(dataloader)}]\tLoss_D: {errD.item()}\tLoss_G: {errG.item()}, D(x): {D_x}, D(G(z)): {D_G_z1} / {D_G_z2}')
+                print(f'[{batch_idx}/{len(dataloader)}]\tLoss_D: {errD.item()}\tLoss_G: {errG.item()}, D(x): {D_x}, D(G(z)): {D_G_z1} / {D_G_z2}')
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
                 tb.add_image('generated images',vutils.make_grid(fake, padding=2, normalize=True), epoch)
                 losses["loss_D"] = errD.item()
                 losses["loss_G"] = errG.item()
-                tb.add_to_metrics_plot(epoch, losses)                
+                tb.add_to_metrics_plot(epoch, losses)
                 
             
             running_loss_G += errG.item() * label.shape[0]
