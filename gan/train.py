@@ -47,15 +47,8 @@ def train(dataset, config, use_tb=False, results_dir=None):
     #    netD.load_state_dict(torch.load(opt.netD))
     # print(netD)
 
-    # number of updates to discriminator for every update to generator
-    disc_iters = 5 
-    
-    optimizerD = optim.Adam(netD.parameters(), lr=config.lrD, betas=(0.0, 0.9))
-    optimizerG = optim.Adam(netG.parameters(), lr=config.lrG, betas=(0.0, 0.9))
-
-    # use an exponentially decaying learning rate
-    scheduler_d = optim.lr_scheduler.ExponentialLR(optimizerD, gamma=0.99)
-    scheduler_g = optim.lr_scheduler.ExponentialLR(optimizerG, gamma=0.99)
+    optimizerD = optim.Adam(netD.parameters(), lr=config.lrD, betas=(0.5, 0.999))
+    optimizerG = optim.Adam(netG.parameters(), lr=config.lrG, betas=(0.5, 0.999))
     
     fixed_noise = torch.randn(config.batch_size, config.nz, 1, 1, device=config.device)
 
@@ -86,16 +79,12 @@ def train(dataset, config, use_tb=False, results_dir=None):
 
             # Show a sample of real images
             if batch_idx == 0 and epoch == 0 and use_tb:
-                tb.add_image('sample images L',
+                tb.add_image('sample imagesx',
                              vutils.make_grid(images[:,:3,:,:],
                                               padding=2,
                                               normalize=True),
                              epoch)
-                tb.add_image('sample images R',
-                             vutils.make_grid(images[:,3:,:,:],
-                                              padding=2,
-                                              normalize=True),
-                             epoch)
+
 
             b_size = images.size(0)
             # labels for GAN are 1 for a real image and 0 for a fake image
@@ -103,32 +92,26 @@ def train(dataset, config, use_tb=False, results_dir=None):
 
             ## Update D Network
             # Train with all real batch
-            for _ in range(disc_iters):
-                optimizerD.zero_grad()
-                optimizerG.zero_grad()
-                output = netD(images).view(-1)
+            output = netD(images).view(-1)
 
-                errD_real = criterion(output, label)
-                errD_real.backward()
-                D_x = output.mean().item()
+            errD_real = criterion(output, label)
+            errD_real.backward()
+            D_x = output.mean().item()
             
-                ## Train with all fake batch
-                noise = torch.randn(b_size, config.nz, 1, 1, device=config.device)
-                fake = netG(noise)
-                label = label.fill_(fake_label)
-                output = netD(fake.detach()).view(-1)
-                errD_fake = criterion(output, label)
+            ## Train with all fake batch
+            noise = torch.randn(b_size, config.nz, 1, 1, device=config.device)
+            fake = netG(noise)
+            label = label.fill_(fake_label)
+            output = netD(fake.detach()).view(-1)
+            errD_fake = criterion(output, label)
                 
-                errD_fake.backward()
-                D_G_z1 = output.mean().item()
-                errD = errD_real + errD_fake
-                optimizerD.step()
+            errD_fake.backward()
+            D_G_z1 = output.mean().item()
+            errD = errD_real + errD_fake
+            optimizerD.step()
             
             ## Update G Network
-            # netG.zero_grad()
-            optimizerD.zero_grad()
-            optimizerG.zero_grad()
-            
+            netG.zero_grad()          
             label.fill_(real_label)
             output = netD(fake).view(-1)
 
@@ -145,13 +128,8 @@ def train(dataset, config, use_tb=False, results_dir=None):
                 if use_tb:
                     with torch.no_grad():
                         fake = netG(fixed_noise).detach().cpu()
-                        tb.add_image('generated images L',
-                             vutils.make_grid(fake[:,:3,:,:],
-                                              padding=2,
-                                              normalize=True),
-                             epoch)
-                        tb.add_image('generated images R',
-                             vutils.make_grid(fake[:,3:,:,:],
+                        tb.add_image('generated images',
+                             vutils.make_grid(fake,
                                               padding=2,
                                               normalize=True),
                              epoch)
@@ -165,9 +143,6 @@ def train(dataset, config, use_tb=False, results_dir=None):
             running_loss_D += errD.item() * label.shape[0]
                                 
             iterations += 1
-
-            scheduler_d.step()
-            scheduler_g.step()
 
         # Epoch stats:
         running_loss_D /= dataset_size

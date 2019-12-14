@@ -43,7 +43,7 @@ if args.train:
 
     dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
                                          Path(r"data/train"),
-                                         use_rl=True,
+                                         # use_rl=True,
                                          transform_input=input_transform)
 
 

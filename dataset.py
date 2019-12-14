@@ -31,7 +31,7 @@ class DiabeticRetinopathyDataset(Dataset):
 
         else:
             sample = self.dr_frame.iloc[idx]
-            image = [sample['image']+".jpeg"]
+            image = sample['image']+".jpeg"
             label = torch.tensor(sample['level'])
 
         if self.transform_input:

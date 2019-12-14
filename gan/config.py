@@ -21,7 +21,7 @@ class Config:
 
         # GAN parameters
         # Number of channels in the training images. 
-        self.nc = 6
+        self.nc = 3
 
         # Size of z latent vector (i.e. size of generator input)
         self.nz = 100
