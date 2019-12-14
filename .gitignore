@@ -3,5 +3,5 @@ data/test/*
 data/sample/*
 data/*.zip*
 data/*.csv
-models/*
+*/models/*
 *__pycache__*

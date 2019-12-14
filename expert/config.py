@@ -14,27 +14,9 @@ class Config:
 
         self.epochs = epochs
         self.batch_size = batch_size
-        self.lrD = learning_rateD
-        self.lrG = learning_rateG
 
         self.scheduler = None
 
-        # GAN parameters
-        # Number of channels in the training images. 
-        self.nc = 3
-
-        # Size of z latent vector (i.e. size of generator input)
-        self.nz = 100
-        
-        # Size of feature maps in generator
-        self.ngf = 64
-        
-        # Size of feature maps in discriminator
-        self.ndf = 64
-        
-    def to_json(self):
-        # write config to json so we can see what we did later
-        pass
 
         
 
