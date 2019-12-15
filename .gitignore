@@ -7,4 +7,6 @@ data/*.csv
 *__pycache__*
 gen_state_dict
 disc_state_dict
+expert_state_dict
 gan/generated_images/*
+*#*

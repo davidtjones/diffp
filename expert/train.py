@@ -11,7 +11,7 @@ from .model import ExpertModel
 import torch.optim as optim
 
 def train(dataset, config, use_tb=False):
-
+    start_time = time.time()
     if use_tb:
         results_dir = Path(results_dir)
         results_dir = results_dir / str(datetime.fromtimestamp(time.time()))
@@ -53,7 +53,6 @@ def train(dataset, config, use_tb=False):
     model = ExpertModel(3, 5).to(config.device)
     # print(model)
 
-
     # Fit data to model
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
@@ -61,7 +60,9 @@ def train(dataset, config, use_tb=False):
     iterations = 0
     start = time.time()
     best_loss = 1000.0
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0001, max_lr=0.1, step_size_up=100, cycle_momentum=False)
 
+    
     for epoch in range(config.epochs):
         epoch_time = time.time()
         print('\nEpoch {}/{}'.format(epoch+1, config.epochs))
@@ -71,8 +72,6 @@ def train(dataset, config, use_tb=False):
         for phase in ['train', 'val']:
             print(f"Starting {phase} phase")
             if phase == 'train':
-                if config.scheduler:
-                    config.scheduler.step()
                 model.train()
             else:
                 model.eval()
@@ -108,9 +107,22 @@ def train(dataset, config, use_tb=False):
 
                 if batch_idx % 150 == 0 and phase == 'train':
                     print(f"[{batch_idx}/{len(dataloaders[phase])}] loss: {running_loss/total:.3f}\t acc: {running_acc/total:.3f}")
+
+                scheduler.step()  # step learning rate scheduler
                 
             running_loss = running_loss/dataset_sizes[phase]
             running_acc = running_acc/dataset_sizes[phase]
                         
             print(f"{phase.capitalize()}: Loss: {running_loss:.3f}\t Acc: {running_acc:.3f}")
+            if (phase == 'val'):
+                if running_loss < best_loss:
+                    print("New best loss! Saving model...")
+                    torch.save(model.state_dict(), "expert_state_dict")
+                    best_loss = running_loss
+
+    print(f"finished in {time.time() - start_time}")
+    print("Saving finished state_dict...")
+
+
+    
 

@@ -64,7 +64,7 @@ if args.network == "gan":
         print("nothing to do")
 
 if args.network == "expert":
-    config = expert_Config(20, 25)
+    config = expert_Config(10, 25)
     print("%s: Starting up" % config.name)
     print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
     

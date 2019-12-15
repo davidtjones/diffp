@@ -15,7 +15,6 @@ class Config:
         self.epochs = epochs
         self.batch_size = batch_size
 
-        self.scheduler = None
 
 
         
