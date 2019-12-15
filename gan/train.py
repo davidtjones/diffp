@@ -18,8 +18,6 @@ def train(dataset, config, use_tb=False, results_dir=None):
         os.mkdir(results_dir)
         tb = TBoard(results_dir=results_dir)
         
-    # Split training dataset into train/validation via dataset_split
-    
     sample_count = len(dataset)
     
     indices = list(range(sample_count))

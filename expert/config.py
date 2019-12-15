@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 class Config:
-    def __init__(self, epochs, batch_size, learning_rateD, learning_rateG, device_num=0):
+    def __init__(self, epochs, batch_size, device_num=0):
         self.name = "Diabetic Retinopathy with Uncertainty"
         self.device = torch.device("cuda:%s" % device_num if torch.cuda.is_available() else "cpu")
         self.device_name = torch.cuda.get_device_name(device_num) if torch.cuda.is_available() else "cpu"

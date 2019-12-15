@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader, SubsetRandomSampler
 import torch.optim as optim
 import torch.nn as nn
 from .util.tboard import TBoard
-
+from .model import ExpertModel
+import torch.optim as optim
 
 def train(dataset, config, use_tb=False):
 
@@ -38,34 +39,37 @@ def train(dataset, config, use_tb=False):
             dataset,
             batch_size=config.batch_size,
             num_workers=config.num_workers,
-            sampler=sampler
+            sampler=sampler,
+            drop_last=True
             )
         for (loader, sampler) in [('train', train_sampler), ('val', valid_sampler)]}
 
     print("Training samples: %s" % len(train_sampler))
     print("Validation samples: %s" % len(valid_sampler))
     print("Samples: %s, %s" % (sample_count, sample_count == len(train_sampler) + len(valid_sampler)))
-    print("Sample batch shape: ", end='')
+
 
     # Instantiate Model
-    model = None
+    model = ExpertModel(3, 5).to(config.device)
+    # print(model)
+
 
     # Fit data to model
-
     criterion = nn.CrossEntropyLoss()
-    optimizer = nn.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters())
 
     iterations = 0
     start = time.time()
     best_loss = 1000.0
 
-    for epoch in range(config.num_epochs):
+    for epoch in range(config.epochs):
         epoch_time = time.time()
-        print('\nEpoch {}/{}'.format(epoch+1, config.num_epochs))
+        print('\nEpoch {}/{}'.format(epoch+1, config.epochs))
         print('-' * 10)
 
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
+            print(f"Starting {phase} phase")
             if phase == 'train':
                 if config.scheduler:
                     config.scheduler.step()
@@ -73,13 +77,13 @@ def train(dataset, config, use_tb=False):
             else:
                 model.eval()
 
-            running_f1 = running_fb = running_precision = running_recall = running_loss = 0.0
+            running_loss = running_acc = total = 0.0
 
             # Iterate over data
             for batch_idx, batch in enumerate(dataloaders[phase]):
                 train_time = time.time()
                 images = batch['image'].to(config.device)
-                labels = batch['labels'].to(config.device)
+                labels = batch['label'].to(config.device)
 
                 optimizer.zero_grad()
 
@@ -88,11 +92,25 @@ def train(dataset, config, use_tb=False):
                 # forward pass
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(images)
-                    loss = criterion(outputs, labels)
+                    output = model(images)
+
+                    _, predicted = torch.max(output.data, 1)
+                    loss = criterion(output, labels)
 
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
-    
+
+                running_loss += loss.item()*output.shape[0]
+                running_acc += (predicted == labels).sum().item()
+                total += output.size(0)
+
+                if batch_idx % 150 == 0 and phase == 'train':
+                    print(f"[{batch_idx}/{len(dataloaders[phase])}] loss: {running_loss/total:.3f}\t acc: {running_acc/total:.3f}")
+                
+            running_loss = running_loss/dataset_sizes[phase]
+            running_acc = running_acc/dataset_sizes[phase]
+                        
+            print(f"{phase.capitalize()}: Loss: {running_loss:.3f}\t Acc: {running_acc:.3f}")
+

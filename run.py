@@ -11,6 +11,10 @@ from gan.train import train as gan_train
 from gan.config import Config as gan_Config
 from gan.generate import generate
 
+import expert
+from expert.train import train as expert_train
+from expert.config import Config as expert_Config
+# from expert.classify import evaluate as classify
 
 parser = argparse.ArgumentParser(description="run script for the diabetic retinopathy challenge")
 parser.add_argument("network", help="either 'gan' for generation or 'expert' for classification")
@@ -60,8 +64,12 @@ if args.network == "gan":
         print("nothing to do")
 
 if args.network == "expert":
+    config = expert_Config(20, 25)
+    print("%s: Starting up" % config.name)
+    print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
+    
     if args.train:
-        pass
+        expert_train(dataset, config)
     elif args.classify:
         pass
     else:
