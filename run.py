@@ -55,7 +55,7 @@ if args.network == "gan":
     if args.train:
         gan_train(dataset, config, use_tb=args.tboard, results_dir=args.directory)
     elif args.generate:
-        generate(args.sample_count, output_directory=args.directory)
+        generate(config, args.sample_count, output_directory=args.directory)
     else:
         print("nothing to do")
 

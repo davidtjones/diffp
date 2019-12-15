@@ -79,8 +79,8 @@ def train(dataset, config, use_tb=False, results_dir=None):
 
             # Show a sample of real images
             if batch_idx == 0 and epoch == 0 and use_tb:
-                tb.add_image('sample imagesx',
-                             vutils.make_grid(images[:,:3,:,:],
+                tb.add_image('sample images',
+                             vutils.make_grid(images[:,:,:,:],
                                               padding=2,
                                               normalize=True),
                              epoch)
