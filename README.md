@@ -11,10 +11,10 @@ To train the expert and produce new state dicts:
 To generate new sample images:
 `python run.py gan -g -d DIRECTORY -s NUM_SAMPLES`
 
-To classify a group of directory of sample images:
+To classify a directory of sample images:
 `python run.py expert -c -d DIRECTORY`
 
-This will produce a csv with predictions
+This will produce two csv files, one is the dataset used and another with the predictions for that dataset.
 
 ## Notes/To do/Future work
 
@@ -23,6 +23,7 @@ This will produce a csv with predictions
   - class balancing?
   - data augmentation? (probably through lighting changes?)
 * GAN 
+  - class balancing?
   - larger kernel size in earlier convolutional layers
   - better regularization
   - increase output resolution??

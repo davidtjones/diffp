@@ -14,7 +14,9 @@ from gan.generate import generate
 import expert
 from expert.train import train as expert_train
 from expert.config import Config as expert_Config
-# from expert.classify import evaluate as classify
+from expert.evaluate import evaluate as classify
+
+from util.make_dataset import make_dataset
 
 parser = argparse.ArgumentParser(description="run script for the diabetic retinopathy challenge")
 parser.add_argument("network", help="either 'gan' for generation or 'expert' for classification")
@@ -71,7 +73,9 @@ if args.network == "expert":
     if args.train:
         expert_train(dataset, config)
     elif args.classify:
-        pass
+        # Create dataset from given directory to pass to the classifier
+        df = make_dataset(args.directory)
+        classify(config, "eval_dataset.csv")
     else:
         print("nothing to do")
 

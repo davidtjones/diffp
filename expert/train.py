@@ -60,8 +60,7 @@ def train(dataset, config, use_tb=False):
     iterations = 0
     start = time.time()
     best_loss = 1000.0
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0001, max_lr=0.1, step_size_up=100, cycle_momentum=False)
-
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0001, max_lr=0.001)
     
     for epoch in range(config.epochs):
         epoch_time = time.time()
