@@ -37,18 +37,16 @@ args = parser.parse_args()
 
 image_size = 64  # resize image to this length/width - changing this requires changes to the model!
 
+input_transform = Compose([
+    LoadImage(Path(r"data/train")),
+    Resize(image_size),
+    CenterCrop(image_size),
+    ToTensor(),
+    Normalize([.5,.5,.5], [.5,.5,.5])
+])
 
 if args.train:
     # only load dataset if we plan to do training
-    input_transform = Compose([
-        LoadImage(Path(r"data/train")),
-        Resize(image_size),
-        CenterCrop(image_size),
-        ToTensor(),
-        Normalize([.5,.5,.5], [.5,.5,.5])
-    ])
-    
-
     dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
                                          Path(r"data/train"),
                                          # use_rl=True,
@@ -60,8 +58,9 @@ if args.network == "gan":
     print("%s: Starting up" % config.name)
     print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
     if args.double_gan:
+        print("using the double gan method")
         # kind of hacky, fix later
-
+        
         healthy_dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
                                          Path(r"data/train"),
                                          # use_rl=True,
@@ -82,11 +81,20 @@ if args.network == "gan":
             gan_train(diabetic_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_diabetic_")
 
         elif args.generate:
-            generate(config, args.sample_count//2, output_directory=args.directory, state_dict="gan_healthy_gen_state_dict")
-            generate(config, args.sample_count//2, output_directory=args.directory, state_dict="gan_diabetic_gen_state_dict")
+            generate(config,
+                     args.sample_count//2,
+                     output_directory=args.directory,
+                     state_dict="gan_healthy_gen_state_dict")
+
+            generate(config,
+                     args.sample_count - args.sample_count//2,
+                     output_directory=args.directory,
+                     idx_start=args.sample_count//2,
+                     state_dict="gan_diabetic_gen_state_dict")
 
 
     else:
+        print("using the single gan method")
         if args.train:
             gan_train(dataset, config, use_tb=args.tboard, results_dir=args.directory)
         elif args.generate:
