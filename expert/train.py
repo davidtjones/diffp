@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, SubsetRandomSampler
 import torch.optim as optim
 import torch.nn as nn
 from .util.tboard import TBoard
+from .util.focal_loss import FocalLoss
 from .model import ExpertModel
 import torch.optim as optim
 
@@ -54,13 +55,14 @@ def train(dataset, config, use_tb=False):
     # print(model)
 
     # Fit data to model
-    criterion = nn.CrossEntropyLoss()
+    criterion = FocalLoss(gamma=2)
+    # criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
 
     iterations = 0
     start = time.time()
     best_loss = 1000.0
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0001, max_lr=0.001)
+    # scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0001, max_lr=0.001)
     
     for epoch in range(config.epochs):
         epoch_time = time.time()
@@ -107,7 +109,7 @@ def train(dataset, config, use_tb=False):
                 if batch_idx % 150 == 0 and phase == 'train':
                     print(f"[{batch_idx}/{len(dataloaders[phase])}] loss: {running_loss/total:.3f}\t acc: {running_acc/total:.3f}")
 
-                scheduler.step()  # step learning rate scheduler
+                # scheduler.step()  # step learning rate scheduler
                 
             running_loss = running_loss/dataset_sizes[phase]
             running_acc = running_acc/dataset_sizes[phase]

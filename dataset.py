@@ -50,5 +50,60 @@ class DiabeticRetinopathyDataset(Dataset):
 
 
 if __name__ == '__main__':
-    drd = DiabeticRetinopathyDataset("data/trainLabels.csv", Path("../data/train/"))
-    print(drd[0])
+    from util.class_balance import class_balance
+    from sklearn.decomposition import PCA
+    import numpy as np
+    from sklearn.manifold import TSNE
+    from transforms import LoadImage
+    from torchvision.transforms import Resize, CenterCrop, Compose, RandomHorizontalFlip, Resize, Normalize, ToTensor
+    from multiprocessing import Pool
+
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+    
+    image_size = 64
+    input_transform = Compose([
+        LoadImage(Path(r"data/train")),
+        Resize(image_size),
+        CenterCrop(image_size),
+        ToTensor(),
+        Normalize([.5,.5,.5], [.5,.5,.5])
+    ])
+
+    
+    drd = DiabeticRetinopathyDataset("data/trainLabels.csv", Path("../data/train/"), transform_input=input_transform)
+    print(drd[0]['image'].shape)
+
+    counts = class_balance(drd)
+    print(counts)
+    def func(idx):
+        return drd[idx]['image'].reshape(-1).numpy()
+
+    def func2(idx):
+        return drd[idx]['label'].numpy()
+
+    p = Pool(8)
+    indices = np.arange(len(drd))
+    samples = np.stack(p.map(func, indices))
+    labels = np.stack(p.map(func2, indices))
+
+    print(samples.shape)
+    print(labels.shape)
+
+    tsne = TSNE()
+    X_embedded = tsne.fit_transform(samples)
+    plt.scatter(X_embedded[0], X_embedded[1], c=labels)
+    plt.savefig('preembed.png')
+
+    
+    
+
+    
+        
+        
+    # Plot TSNE of data before balancing (benchmark)
+    
+    
+
+    
