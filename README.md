@@ -11,6 +11,9 @@ To train the expert and produce new state dicts:
 To generate new sample images:
 `python run.py gan -g -d DIRECTORY -s NUM_SAMPLES`
 
+To generate new sample images with the double gan method:
+`python run.py gan -g -d DIRECTORY -s NUM_SAMPLES --double_gan`
+
 To classify a directory of sample images:
 `python run.py expert -c -d DIRECTORY`
 

@@ -21,6 +21,7 @@ from active_bayesian.train import train as ab_train
 from active_bayesian.config import Config as ab_Config
 
 from util.make_dataset import make_dataset
+from util.split_dataset_dg import split_dataset_dg
 
 parser = argparse.ArgumentParser(description="run script for the diabetic retinopathy challenge")
 parser.add_argument("network", help="either 'gan' for generation or 'expert' for classification")
@@ -33,12 +34,20 @@ group.add_argument("-g", "--generate", help="generate samples", action="store_tr
 parser.add_argument("-s", "--sample_count", type=int, help="number of samples to generate")
 parser.add_argument("-d", "--directory", help="directory containing samples to be trained, classified, or generated")
 parser.add_argument("--tboard", help="turn on tensorboard output", action="store_true")
+parser.add_argument("-dg", "--double_gan", help="use two gans to model retinopathy", action="store_true")
 
 args = parser.parse_args()
 
 
 image_size = 64  # resize image to this length/width - changing this requires changes to the model!
 
+input_transform = Compose([
+    LoadImage(Path(r"data/train")),
+    Resize(image_size),
+    CenterCrop(image_size),
+    ToTensor(),
+    Normalize([.5,.5,.5], [.5,.5,.5])
+])
 
 if args.train:
     # only load dataset if we plan to do training
@@ -50,7 +59,6 @@ if args.train:
         Normalize([.5,.5,.5], [.5,.5,.5])
     ])
 
-
     dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
                                          Path(r"data/train"),
                                          # use_rl=True,
@@ -61,13 +69,50 @@ if args.network == "gan":
     config = gan_Config(20, 128, .00004, 0.0001)
     print("%s: Starting up" % config.name)
     print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
+    if args.double_gan:
+        print("using the double gan method")
+        # kind of hacky, fix later
+        
+        healthy_dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
+                                         Path(r"data/train"),
+                                         # use_rl=True,
+                                         transform_input=input_transform)
 
-    if args.train:
-        gan_train(dataset, config, use_tb=args.tboard, results_dir=args.directory)
-    elif args.generate:
-        generate(config, args.sample_count, output_directory=args.directory)
+        
+        diabetic_dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
+                                         Path(r"data/train"),
+                                         # use_rl=True,
+                                         transform_input=input_transform)
+
+        healthy_samples, diabetic_samples = split_dataset_dg(r"data/trainLabels.csv")
+        healthy_dataset.dr_frame = healthy_samples
+        diabetic_dataset.dr_frame = diabetic_samples
+
+        if args.train:
+            gan_train(healthy_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_healthy_")
+            gan_train(diabetic_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_diabetic_")
+
+        elif args.generate:
+            generate(config,
+                     args.sample_count//2,
+                     output_directory=args.directory,
+                     state_dict="gan_healthy_gen_state_dict")
+
+            generate(config,
+                     args.sample_count - args.sample_count//2,
+                     output_directory=args.directory,
+                     idx_start=args.sample_count//2,
+                     state_dict="gan_diabetic_gen_state_dict")
+
+
     else:
-        print("nothing to do")
+        print("using the single gan method")
+        if args.train:
+            gan_train(dataset, config, use_tb=args.tboard, results_dir=args.directory)
+        elif args.generate:
+            generate(config, args.sample_count, output_directory=args.directory)
+        else:
+            print("nothing to do")
 
 if args.network == "expert":
     config = expert_Config(10, 25)

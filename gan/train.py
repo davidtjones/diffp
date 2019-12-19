@@ -10,7 +10,7 @@ from .util.tboard import TBoard
 from datetime import datetime
 import os
 
-def train(dataset, config, use_tb=False, results_dir=None):
+def train(dataset, config, use_tb=False, results_dir=None, out_prefix="gan_"):
 
     if use_tb:
         results_dir = Path(results_dir)
@@ -149,6 +149,6 @@ def train(dataset, config, use_tb=False, results_dir=None):
         print(f"Epoch loss: D: {running_loss_D}\t G: {running_loss_G}")
 
     # Save GAN
-    torch.save(netD.state_dict(), "disc_state_dict")
-    torch.save(netG.state_dict(), "gen_state_dict")
+    torch.save(netD.state_dict(), out_prefix+"disc_state_dict")
+    torch.save(netG.state_dict(), out_prefix+"gen_state_dict")
 
