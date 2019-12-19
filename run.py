@@ -16,6 +16,10 @@ from expert.train import train as expert_train
 from expert.config import Config as expert_Config
 from expert.evaluate import evaluate as classify
 
+import active_bayesian as ab
+from active_bayesian.train import train as ab_train
+from active_bayesian.config import Config as ab_Config
+
 from util.make_dataset import make_dataset
 
 parser = argparse.ArgumentParser(description="run script for the diabetic retinopathy challenge")
@@ -45,7 +49,7 @@ if args.train:
         ToTensor(),
         Normalize([.5,.5,.5], [.5,.5,.5])
     ])
-    
+
 
     dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
                                          Path(r"data/train"),
@@ -69,7 +73,7 @@ if args.network == "expert":
     config = expert_Config(10, 25)
     print("%s: Starting up" % config.name)
     print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
-    
+
     if args.train:
         expert_train(dataset, config)
     elif args.classify:
@@ -79,20 +83,12 @@ if args.network == "expert":
     else:
         print("nothing to do")
 
+if args.network == "ab":
+    config = ab_Config(10, 25)
+    print(f"{config.name}: Starting up")
+    print(f"{config.name}: Device: {config.device} : {config.device_name}")
+
+    ab_train(dataset, config)
+
 
 # config needs to take arguments from parser
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
