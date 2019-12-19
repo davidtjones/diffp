@@ -82,8 +82,8 @@ if args.network == "gan":
             gan_train(diabetic_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_diabetic_")
 
         elif args.generate:
-            generate(config, args.sample_count//2, output_directory=args.directory)
-            generate(config, args.sample_count//2, output_directory=args.directory)
+            generate(config, args.sample_count//2, output_directory=args.directory, state_dict="gan_healthy_gen_state_dict")
+            generate(config, args.sample_count//2, output_directory=args.directory, state_dict="gan_diabetic_gen_state_dict")
 
 
     else:
