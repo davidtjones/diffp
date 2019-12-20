@@ -6,7 +6,7 @@ import pandas as pd
 def make_dataset(image_dir):
     image_path = Path(image_dir)
 
-    files = [path for path in image_path.glob('*')]
+    files = [path for path in image_path.glob('*.jpeg')]
     df = pd.DataFrame(files, columns=['image_path'])
         
     df.to_csv("eval_dataset.csv")
