@@ -18,10 +18,13 @@ from expert.evaluate import evaluate as classify
 
 import active_bayesian as ab
 from active_bayesian.train import train as ab_train
+from active_bayesian.train import train_on_gan as ab_train_og
 from active_bayesian.config import Config as ab_Config
 
 from util.make_dataset import make_dataset
 from util.split_dataset_dg import split_dataset_dg
+
+import numpy as np
 
 parser = argparse.ArgumentParser(description="run script for the diabetic retinopathy challenge")
 parser.add_argument("network", help="either 'gan' for generation or 'expert' for classification")
@@ -49,7 +52,7 @@ input_transform = Compose([
     Normalize([.5,.5,.5], [.5,.5,.5])
 ])
 
-if args.train:
+if args.train or args.classify:
     # only load dataset if we plan to do training
     input_transform = Compose([
         LoadImage(Path(r"data/train")),
@@ -130,10 +133,34 @@ if args.network == "expert":
 
 if args.network == "ab":
     config = ab_Config(10, 25)
-    print(f"{config.name}: Starting up")
-    print(f"{config.name}: Device: {config.device} : {config.device_name}")
+    if args.train:
+        print(f"{config.name}: Starting up")
+        print(f"{config.name}: Device: {config.device} : {config.device_name}")
 
-    ab_train(dataset, config)
+        ab_train(dataset, config)
+
+    if args.classify:
+        import imageio
+        import glob
+
+        healthy_images = []
+        for im_path in glob.glob("gan-images/sample_?.jpeg"):
+            healthy_images.append(imageio.imread(im_path))
+        for im_path in glob.glob("gan-images/sample_??.jpeg"):
+            healthy_images.append(imageio.imread(im_path))
+        for im_path in glob.glob("gan-images/sample_???.jpeg"):
+            healthy_images.append(imageio.imread(im_path))
+        for im_path in glob.glob("gan-images/sample_[0-4]???.jpeg"):
+            healthy_images.append(imageio.imread(im_path))
+
+        diabetic_images = []
+        for im_path in glob.glob("gan-images/sample_[5-9]???.jpeg"):
+            diabetic_images.append(imageio.imread(im_path))
+
+        healthy_images = np.array(healthy_images)
+        diabetic_images = np.array(diabetic_images)
+
+        ab_train_og(healthy_images, diabetic_images, dataset, config)
 
 
 # config needs to take arguments from parser
