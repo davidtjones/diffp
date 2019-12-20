@@ -14,7 +14,7 @@ from torchvision.transforms import Resize, CenterCrop, Compose, Normalize, ToTen
 from torch.utils.data import DataLoader
 
 
-def evaluate(config, eval_dataset_csv):
+def evaluate(config, eval_dataset_csv, verify_input=False):
     start_time = time.time()
 
     # load model:
@@ -41,6 +41,16 @@ def evaluate(config, eval_dataset_csv):
         )
     
     predictions = []
+    if verify_input:
+        print("Verifying input integrity...")
+        error = 0
+        try:
+            for idx, data in enumerate(eval_dataset):
+                print(idx, end='|', flush=True)
+                error = idx
+        except:
+            print(f"issue at sample {error+1}, verify or remove sample {eval_dataset.dr_frame.iloc[error+1]}")
+            exit()
     # classify
     for batch_idx, batch in enumerate(dataloader):
         images = batch['image'].to(config.device)

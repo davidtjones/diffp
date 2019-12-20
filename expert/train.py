@@ -11,7 +11,7 @@ from .util.focal_loss import FocalLoss
 from .model import ExpertModel
 import torch.optim as optim
 
-def train(dataset, config, use_tb=False):
+def train(dataset, config, use_valid=True, use_tb=False):
     start_time = time.time()
     if use_tb:
         results_dir = Path(results_dir)
@@ -21,33 +21,51 @@ def train(dataset, config, use_tb=False):
 
     sample_count = len(dataset)
 
-    split = sample_count // 5
+
     indices = list(range(sample_count))
+    phases=['train']
+    # Do validation split
+    if use_valid:
+        phases.append('val')
+        split = sample_count // 5
+        valid_idx = np.random.choice(
+            indices,
+            size=split,
+            replace=False)
 
-    valid_idx = np.random.choice(
-        indices,
-        size=split,
-        replace=False)
+        train_idx = list(set(indices) - set(valid_idx))
+        dataset_sizes = {'train': len(train_idx), 'val': len(valid_idx)}
 
-    train_idx = list(set(indices) - set(valid_idx))
-    dataset_sizes = {'train': len(train_idx), 'val': len(valid_idx)}
+        train_sampler = SubsetRandomSampler(train_idx)
+        valid_sampler = SubsetRandomSampler(valid_idx)
 
-    train_sampler = SubsetRandomSampler(train_idx)
-    valid_sampler = SubsetRandomSampler(valid_idx)
-
-    dataloaders = {
-        loader: DataLoader(
-            dataset,
-            batch_size=config.batch_size,
-            num_workers=config.num_workers,
-            sampler=sampler,
-            drop_last=True
+        dataloaders = {
+            loader: DataLoader(
+                dataset,
+                batch_size=config.batch_size,
+                num_workers=config.num_workers,
+                sampler=sampler,
+                drop_last=True
             )
-        for (loader, sampler) in [('train', train_sampler), ('val', valid_sampler)]}
+            for (loader, sampler) in [('train', train_sampler), ('val', valid_sampler)]}
+    else:
+        train_idx = indices
+        dataset_sizes = {'train': len(train_idx)}
+        train_sampler = SubsetRandomSampler(train_idx)
+        dataloaders = {
+            loader: DataLoader(
+                dataset,
+                batch_size=config.batch_size,
+                num_workers=config.num_workers,
+                sampler=sampler,
+                drop_last=True
+                )
+            for (loader, sampler) in [('train', train_sampler)]}
 
     print("Training samples: %s" % len(train_sampler))
-    print("Validation samples: %s" % len(valid_sampler))
-    print("Samples: %s, %s" % (sample_count, sample_count == len(train_sampler) + len(valid_sampler)))
+    if use_valid:
+        print("Validation samples: %s" % len(valid_sampler))
+        print("Samples: %s, %s" % (sample_count, sample_count == len(train_sampler) + len(valid_sampler)))
 
 
     # Instantiate Model
@@ -70,7 +88,7 @@ def train(dataset, config, use_tb=False):
         print('-' * 10)
 
         # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
+        for phase in phases:
             print(f"Starting {phase} phase")
             if phase == 'train':
                 model.train()
@@ -93,7 +111,7 @@ def train(dataset, config, use_tb=False):
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     output = model(images)
-
+                    print(output)
                     _, predicted = torch.max(output.data, 1)
                     loss = criterion(output, labels)
 
@@ -115,6 +133,7 @@ def train(dataset, config, use_tb=False):
             running_acc = running_acc/dataset_sizes[phase]
                         
             print(f"{phase.capitalize()}: Loss: {running_loss:.3f}\t Acc: {running_acc:.3f}")
+            
             if (phase == 'val'):
                 if running_loss < best_loss:
                     print("New best loss! Saving model...")
@@ -122,7 +141,7 @@ def train(dataset, config, use_tb=False):
                     best_loss = running_loss
 
     print(f"finished in {time.time() - start_time}")
-    print("Saving finished state_dict...")
+    print("Training complete")
 
 
     

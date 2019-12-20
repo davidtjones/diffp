@@ -90,7 +90,7 @@ if args.network == "gan":
         healthy_samples, diabetic_samples = split_dataset_dg(r"data/trainLabels.csv")
         healthy_dataset.dr_frame = healthy_samples
         diabetic_dataset.dr_frame = diabetic_samples
-
+        
         if args.train:
             gan_train(healthy_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_healthy_")
             gan_train(diabetic_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_diabetic_")
