@@ -1,23 +1,11 @@
-# Diabetic Retinopathy Uncertainty
+# Differential Privacy
 --
 
-Place state dicts in project root folder. These will be necessary to run the commands below successfully. 
+
 
 ## Useful run script commands
 
-To train the expert and produce new state dicts:
-`python run.py expert -t`
-
-To generate new sample images:
-`python run.py gan -g -d DIRECTORY -s NUM_SAMPLES`
-
-To generate new sample images with the double gan method:
-`python run.py gan -g -d DIRECTORY -s NUM_SAMPLES --double_gan`
-
-To classify a directory of sample images:
-`python run.py expert -c -d DIRECTORY`
-
-This will produce two csv files, one is the dataset used and another with the predictions for that dataset.
+Currently in refactor
 
 ## Notes/To do/Future work
 

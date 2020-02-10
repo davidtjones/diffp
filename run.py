@@ -1,166 +1,86 @@
+import code
+import json
 import argparse
 import torch
 from pathlib import Path
-
-from dataset import DiabeticRetinopathyDataset
-from transforms import LoadImage
-from torchvision.transforms import Resize, CenterCrop, Compose, RandomHorizontalFlip, Resize, Normalize, ToTensor
-
-import gan
-from gan.train import train as gan_train
-from gan.config import Config as gan_Config
-from gan.generate import generate
-
-import expert
-from expert.train import train as expert_train
-from expert.config import Config as expert_Config
-from expert.evaluate import evaluate as classify
-
-import active_bayesian as ab
-from active_bayesian.train import train as ab_train
-from active_bayesian.train import train_on_gan as ab_train_og
-from active_bayesian.config import Config as ab_Config
-
-from util.make_dataset import make_dataset
-from util.split_dataset_dg import split_dataset_dg
-
 import numpy as np
 
-parser = argparse.ArgumentParser(description="run script for the diabetic retinopathy challenge")
-parser.add_argument("network", help="either 'gan' for generation or 'expert' for classification")
+from util.dataset_tools import activate_dataset
 
-group = parser.add_mutually_exclusive_group()
-group.add_argument("-t", "--train", help="train network", action="store_true")
-group.add_argument("-c", "--classify", help="classify samples", action="store_true")
-group.add_argument("-g", "--generate", help="generate samples", action="store_true")
+from active_bayesian.train import train as al_train
+from active_bayesian.evaluate import evaluate as al_evaluate
+from active_bayesian.classify import classify as al_classify
 
-parser.add_argument("-s", "--sample_count", type=int, help="number of samples to generate")
-parser.add_argument("-d", "--directory", help="directory containing samples to be trained, classified, or generated")
-parser.add_argument("--tboard", help="turn on tensorboard output", action="store_true")
-parser.add_argument("-dg", "--double_gan", help="use two gans to model retinopathy", action="store_true")
+from gan.train import train as gan_train
+from gan.evaluate import evaluate as gan_evaluate
+from gan.generate import generate
 
+from expert.train import train as exp_train
+from expert.evaluate import evaluate as exp_evaluate
+from expert.classify import classify as exp_classify
+
+
+parser = argparse.ArgumentParser(description="entry point for the differential privacy project")
+subparsers = parser.add_subparsers(help="sub-command help")
+
+# Gan commands
+parser_gan = subparsers.add_parser('gan', help='sub-commands for the GAN')
+parser_gan_subparsers = parser_gan.add_subparsers(help="GAN sub-command help")
+
+parser_gan_train = parser_gan_subparsers.add_parser("train", help="train the GAN")
+parser_gan_train.add_argument("dataset", help="dataset to use, either cifar10, mnist, ...", action="store")
+parser_gan_train.set_defaults(func=gan_train)
+
+parser_gan_eval = parser_gan_subparsers.add_parser("evaluate", help="evaluate the GAN")
+parser_gan_eval.add_argument("dataset", help="dataset to use, either cifar10, mnist, ...", action="store")
+parser_gan_eval.set_defaults(func=gan_evaluate)
+
+parser_gan_gen = parser_gan_subparsers.add_parser("generate", help="generate new images")
+parser_gan_gen.set_defaults(func=generate)
+
+
+# Expert commands
+parser_exp = subparsers.add_parser('expert', help='sub-commands for the expert model')
+parser_exp_subparsers = parser_exp.add_subparsers(help="Expert Model sub-command help")
+
+parser_exp_train = parser_exp_subparsers.add_parser("train", help="train the Expert Model")
+parser_exp_train.add_argument("dataset", help="dataset to use, either cifar10, mnist, ...", action="store")
+parser_exp_train.set_defaults(func=exp_train)
+
+parser_exp_eval = parser_exp_subparsers.add_parser("evaluate", help="evaluate the Expert Model")
+parser_exp_eval.add_argument("dataset", help="dataset to use, either cifar10, mnist, ...", action="store")
+parser_exp_eval.set_defaults(func=exp_evaluate)
+
+parser_exp_classify = parser_exp_subparsers.add_parser("classify", help="classify using the Expert Model")
+parser_exp_classify.set_defaults(func=exp_classify)
+
+
+# Active Learning Model commands
+parser_al = subparsers.add_parser("active", help="sub-commands for the active learning model")
+parser_al_subparsers = parser_al.add_subparsers(help="Active Learner sub-command help")
+
+parser_al_train = parser_al_subparsers.add_parser("train", help="train the Active Learning Model")
+parser_al_train.add_argument("dataset", help="dataset to use, either cifar10, mnist, ...", action="store")
+parser_al.set_defaults(func=al_train)
+
+parser_al_eval = parser_al_subparsers.add_parser("evaluate", help="evaluate the Active Learning Model")
+parser_al_eval.add_argument("dataset", help="dataset to use, either cifar10, mnist, ...", action="store")
+parser_al_eval.set_defaults(func=al_evaluate)
+
+parser_al_classify = parser_al_subparsers.add_parser("classify", help="classify using the Active Learning Model")
+parser_al_classify.set_defaults(func=al_classify)
+
+
+# Parse arguments
 args = parser.parse_args()
 
+with open("options/base_options.json", 'r') as f:
+    opts = json.load(f)
 
-image_size = 64  # resize image to this length/width - changing this requires changes to the model!
+kwargs = vars(args)
+func = kwargs['func']
+del kwargs['func']
 
-input_transform = Compose([
-    LoadImage(Path(r"data/train")),
-    Resize(image_size),
-    CenterCrop(image_size),
-    ToTensor(),
-    Normalize([.5,.5,.5], [.5,.5,.5])
-])
+# pass parameters to func
+func(**kwargs)
 
-if args.train or args.classify:
-    # only load dataset if we plan to do training
-    input_transform = Compose([
-        LoadImage(Path(r"data/train")),
-        Resize(image_size),
-        CenterCrop(image_size),
-        ToTensor(),
-        Normalize([.5,.5,.5], [.5,.5,.5])
-    ])
-
-    dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
-                                         Path(r"data/train"),
-                                         # use_rl=True,
-                                         transform_input=input_transform)
-
-
-if args.network == "gan":
-    config = gan_Config(20, 128, .00004, 0.0001)
-    print("%s: Starting up" % config.name)
-    print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
-    if args.double_gan:
-        print("using the double gan method")
-        # kind of hacky, fix later
-        
-        healthy_dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
-                                         Path(r"data/train"),
-                                         # use_rl=True,
-                                         transform_input=input_transform)
-
-        
-        diabetic_dataset = DiabeticRetinopathyDataset(r"data/trainLabels.csv",
-                                         Path(r"data/train"),
-                                         # use_rl=True,
-                                         transform_input=input_transform)
-
-        healthy_samples, diabetic_samples = split_dataset_dg(r"data/trainLabels.csv")
-        healthy_dataset.dr_frame = healthy_samples
-        diabetic_dataset.dr_frame = diabetic_samples
-        
-        if args.train:
-            gan_train(healthy_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_healthy_")
-            gan_train(diabetic_dataset, config, use_tb=args.tboard, results_dir=args.directory, out_prefix="gan_diabetic_")
-
-        elif args.generate:
-            generate(config,
-                     args.sample_count//2,
-                     output_directory=args.directory,
-                     state_dict="gan_healthy_gen_state_dict")
-
-            generate(config,
-                     args.sample_count - args.sample_count//2,
-                     output_directory=args.directory,
-                     idx_start=args.sample_count//2,
-                     state_dict="gan_diabetic_gen_state_dict")
-
-
-    else:
-        print("using the single gan method")
-        if args.train:
-            gan_train(dataset, config, use_tb=args.tboard, results_dir=args.directory)
-        elif args.generate:
-            generate(config, args.sample_count, output_directory=args.directory)
-        else:
-            print("nothing to do")
-
-if args.network == "expert":
-    config = expert_Config(10, 25)
-    print("%s: Starting up" % config.name)
-    print("%s: Device: %s : %s" % (config.name, config.device, config.device_name))
-
-    if args.train:
-        expert_train(dataset, config)
-    elif args.classify:
-        # Create dataset from given directory to pass to the classifier
-        df = make_dataset(args.directory)
-        classify(config, "eval_dataset.csv")
-    else:
-        print("nothing to do")
-
-if args.network == "ab":
-    config = ab_Config(10, 25)
-    if args.train:
-        print(f"{config.name}: Starting up")
-        print(f"{config.name}: Device: {config.device} : {config.device_name}")
-
-        ab_train(dataset, config)
-
-    if args.classify:
-        import imageio
-        import glob
-
-        healthy_images = []
-        for im_path in glob.glob("gan-images/sample_?.jpeg"):
-            healthy_images.append(imageio.imread(im_path))
-        for im_path in glob.glob("gan-images/sample_??.jpeg"):
-            healthy_images.append(imageio.imread(im_path))
-        for im_path in glob.glob("gan-images/sample_???.jpeg"):
-            healthy_images.append(imageio.imread(im_path))
-        for im_path in glob.glob("gan-images/sample_[0-4]???.jpeg"):
-            healthy_images.append(imageio.imread(im_path))
-
-        diabetic_images = []
-        for im_path in glob.glob("gan-images/sample_[5-9]???.jpeg"):
-            diabetic_images.append(imageio.imread(im_path))
-
-        healthy_images = np.array(healthy_images)
-        diabetic_images = np.array(diabetic_images)
-
-        ab_train_og(healthy_images, diabetic_images, dataset, config)
-
-
-# config needs to take arguments from parser
