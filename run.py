@@ -7,9 +7,9 @@ import numpy as np
 
 from util.dataset_tools import activate_dataset
 
-from active_bayesian.train import train as al_train
-from active_bayesian.evaluate import evaluate as al_evaluate
-from active_bayesian.classify import classify as al_classify
+from active.train import train as al_train
+from active.evaluate import evaluate as al_evaluate
+from active.classify import classify as al_classify
 
 from gan.train import train as gan_train
 from gan.evaluate import evaluate as gan_evaluate
