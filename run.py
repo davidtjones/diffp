@@ -36,7 +36,9 @@ parser_gan_eval.add_argument("dataset", help="dataset to use, either cifar10, mn
 parser_gan_eval.set_defaults(func=gan_evaluate)
 
 parser_gan_gen = parser_gan_subparsers.add_parser("generate", help="generate new images")
-parser_gan_gen.set_defaults(func=generate)
+parser_gan_gen.add_argument("path", help="path to folder where generated images will be saved")
+parser_gan_gen.add_argument("-c", "--count", help="number of images to generate, default=1")
+parser_gan_gen.set_defaults(func=generate, count=1)
 
 
 # Expert commands
@@ -52,6 +54,7 @@ parser_exp_eval.add_argument("dataset", help="dataset to use, either cifar10, mn
 parser_exp_eval.set_defaults(func=exp_evaluate)
 
 parser_exp_classify = parser_exp_subparsers.add_parser("classify", help="classify using the Expert Model")
+parser_exp_classify.add_argument("path", help="path to folder of images to classify")
 parser_exp_classify.set_defaults(func=exp_classify)
 
 
@@ -68,8 +71,10 @@ parser_al_eval.add_argument("dataset", help="dataset to use, either cifar10, mni
 parser_al_eval.set_defaults(func=al_evaluate)
 
 parser_al_classify = parser_al_subparsers.add_parser("classify", help="classify using the Active Learning Model")
+parser_al_classify.add_argument("path", help="path to folder of images to classify")
 parser_al_classify.set_defaults(func=al_classify)
 
+# future: cross-evaluation between AL and Expert
 
 # Parse arguments
 args = parser.parse_args()

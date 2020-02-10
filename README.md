@@ -1,5 +1,9 @@
 # Differential Privacy
---
+
+Running the code is simple, simply perform
+`python run.py active|expert|gan train|evaluate dataset`
+
+Where dataset is some folder located in `./datasets`
 
 
 
