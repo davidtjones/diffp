@@ -134,11 +134,8 @@ dmypy.json
 .pytype/
 
 
-data/train/*
-data/test/*
-data/sample/*
-data/*.zip*
-data/*.csv
+
+datasets/*/*
 */models/*
 *__pycache__*
 gen_state_dict
